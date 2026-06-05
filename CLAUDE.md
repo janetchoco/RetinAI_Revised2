@@ -201,4 +201,27 @@ All data and outputs live on Google Drive — nothing is stored locally on the C
 !ln -sf /content/drive/MyDrive/RetinAI_Revised2_Output/artifacts artifacts
 ```
 
-All writes to `data/preprocessed/` and `artifacts/` persist directly to Drive via symlink — no manual backup step needed. `num_workers` in `base.yaml` should be set to `2` on T4/L4 Colab runtimes (system max).
+All writes to `data/preprocessed/` and `artifacts/` persist directly to Drive via symlink — no manual backup step needed.
+
+**`num_workers` by GPU:**
+- T4 / L4: set to `2` (system max)
+- A100: set to `4`
+
+**Critical: copy images to local disk before training** — reading from Drive via symlink is slow and leaves the GPU underutilised (GPU RAM stays near 0). After setup, copy once per session:
+```python
+!cp -r /content/drive/MyDrive/RetinAI_Revised2_Output/preprocessed /content/preprocessed
+!ln -sfn /content/preprocessed data/preprocessed
+```
+This re-points `data/preprocessed` to local SSD. The `artifacts/` symlink still goes to Drive so all outputs are persisted.
+
+**`data/` directory must exist before symlinking** — `ln -sf` on `data/preprocessed` fails if `data/` doesn't exist yet. Always run `mkdir -p data` before the symlink line.
+
+**Check HPO progress while it's running** (from Colab Terminal or a second notebook):
+```python
+import optuna
+s = optuna.load_study(study_name="efficientnet_b0_hpo_224", storage="sqlite:///artifacts/optuna.db")
+print(f"Complete: {len([t for t in s.trials if t.state.name=='COMPLETE'])}")
+print(f"Pruned:   {len([t for t in s.trials if t.state.name=='PRUNED'])}")
+if s.best_trial: print(f"Best: {s.best_value:.4f}  params: {s.best_params}")
+```
+Study names follow the pattern `{model_name}_hpo_224`.
