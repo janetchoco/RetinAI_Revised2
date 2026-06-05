@@ -23,9 +23,10 @@ def run_hpo(cfg: AppConfig, manifest: pd.DataFrame, model_name: str) -> optuna.S
         lr = trial.suggest_float("lr", 1e-5, 3e-3, log=True)
         wd = trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True)
         batch_choices = {
+            "efficientnet_b0": [16, 32, 64, 128],
             "deit_tiny": [16, 32, 64, 128],
             "resnet18": [16, 32, 64, 128],
-        }.get(model_name, [8, 16, 32])
+        }.get(model_name, [16, 32, 64, 128])
         batch_size = trial.suggest_categorical("batch_size", batch_choices)
         fold_scores = []
         for fold in range(cfg.cv.n_splits):
