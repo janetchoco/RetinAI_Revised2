@@ -1,15 +1,53 @@
 # RetinAI Runbook
 
-## Phase 1 — Setup
-### 1) Install dependencies
-`pip install -r requirements.txt`
+## Colab Session Setup (run at the start of every session)
 
-### 2) Build manifest from folder labels
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Clone repo (first session) or pull latest code (subsequent sessions)
+import os
+if not os.path.exists('RetinAI_Revised2'):
+    !git clone https://github.com/<your-username>/RetinAI_Revised2.git
+%cd RetinAI_Revised2
+!git pull
+
+# Install dependencies
+!pip install -r requirements.txt
+
+# Symlink source data (read-only)
+!ln -sf /content/drive/MyDrive/RetinAI_Revised_Data/train train
+!ln -sf /content/drive/MyDrive/RetinAI_Revised_Data/test test
+
+# Symlink outputs to Drive (create folders if first time)
+!mkdir -p /content/drive/MyDrive/RetinAI_Revised2_Output/preprocessed
+!mkdir -p /content/drive/MyDrive/RetinAI_Revised2_Output/artifacts
+!ln -sf /content/drive/MyDrive/RetinAI_Revised2_Output/preprocessed data/preprocessed
+!ln -sf /content/drive/MyDrive/RetinAI_Revised2_Output/artifacts artifacts
+```
+
+---
+
+## Phase 0 — Preprocessing (run once, then skip on subsequent sessions)
+
+### 0) Crop black backgrounds and save to Drive
+`PYTHONPATH=src python -m retinai preprocess --config configs/base.yaml`
+
+### 1) Build manifest with 80/20 stratified split
 `PYTHONPATH=src python -m retinai build-manifest --config configs/base.yaml`
 
 ---
 
+## Phase 1 — Setup
+
+### 2) Install dependencies
+`pip install -r requirements.txt`
+
+---
+
 ## Phase 2 — HPO (5-fold CV × 50 trials per model)
+
 ### 3) HPO — EfficientNet-B0
 `PYTHONPATH=src python -m retinai hpo --config configs/base.yaml --model-name efficientnet_b0`
 
@@ -24,39 +62,38 @@
 ## Phase 3 — Model Comparison (Repeated 5-fold × 10 = 50 runs per model)
 > Replace --lr, --weight-decay, --batch-size with best params from each model's HPO output.
 
-### 6) Repeated CV — EfficientNet-B0 (HPO best: macro_f1=0.9190)
-`PYTHONPATH=src python -m retinai repeat-cv --config configs/base.yaml --model-name efficientnet_b0 --lr 0.0005618447545488722 --weight-decay 1.3129046436784662e-06 --batch-size 32`
+### 6) Repeated CV — EfficientNet-B0
+`PYTHONPATH=src python -m retinai repeat-cv --config configs/base.yaml --model-name efficientnet_b0 --lr <best_lr> --weight-decay <best_wd> --batch-size <best_bs>`
 > Output: `artifacts/repeated_cv/efficientnet_b0/scores.csv` (50 macro F1 scores)
 
-### 7) Repeated CV — DeiT-Tiny (HPO best: macro_f1=0.9129)
-`PYTHONPATH=src python -m retinai repeat-cv --config configs/base.yaml --model-name deit_tiny --lr 7.054516705607733e-05 --weight-decay 4.1372877625975084e-05 --batch-size 128`
-> Output: `artifacts/repeated_cv/deit_tiny/scores.csv`
+### 7) Repeated CV — DeiT-Tiny
+`PYTHONPATH=src python -m retinai repeat-cv --config configs/base.yaml --model-name deit_tiny --lr <best_lr> --weight-decay <best_wd> --batch-size <best_bs>`
 
-### 8) Repeated CV — ResNet18 (HPO best: macro_f1=0.9242)
-`PYTHONPATH=src python -m retinai repeat-cv --config configs/base.yaml --model-name resnet18 --lr 0.00013751516691064744 --weight-decay 2.3436685827211785e-06 --batch-size 32`
-> Output: `artifacts/repeated_cv/resnet18/scores.csv`
+### 8) Repeated CV — ResNet18
+`PYTHONPATH=src python -m retinai repeat-cv --config configs/base.yaml --model-name resnet18 --lr <best_lr> --weight-decay <best_wd> --batch-size <best_bs>`
 
 ### 9) Statistical comparison across models
 `PYTHONPATH=src python -m retinai compare-models --config configs/base.yaml`
 > Outputs:
-> - `artifacts/comparison/model_ci_summary.csv` — mean ± SD + 95% CI per model
-> - `artifacts/comparison/wilcoxon_pairwise.csv` — Wilcoxon signed-rank + Holm-Bonferroni p-value + effect size r
-> - `artifacts/comparison/auc_comparison_table.csv` — AUC per class per model
-> - `artifacts/comparison/roc_disease_{class}.png` — ROC Type 2: per-disease, all 3 models on one plot
+> - `artifacts/comparison/model_ci_summary.csv`
+> - `artifacts/comparison/wilcoxon_pairwise.csv`
+> - `artifacts/comparison/auc_comparison_table.csv`
+> - `artifacts/comparison/roc_disease_{class}.png`
 
 ---
 
-## Phase 4 — Final Training (100% training data, no validation, all 3 models)
+## Phase 4 — Final Training (100% training pool, 100 epochs, no early stopping)
 > Replace --lr, --weight-decay, --batch-size with best HPO params per model.
+> loss_curve.png is automatically saved alongside best.pt after each run.
 
 ### 10) Train final — EfficientNet-B0
-`PYTHONPATH=src python -m retinai train-final --config configs/base.yaml --model-name efficientnet_b0 --lr 0.0005618447545488722 --weight-decay 1.3129046436784662e-06 --batch-size 32`
+`PYTHONPATH=src python -m retinai train-final --config configs/base.yaml --model-name efficientnet_b0 --lr <best_lr> --weight-decay <best_wd> --batch-size <best_bs> --epochs 100 --out-dir artifacts/final/efficientnet_b0`
 
 ### 11) Train final — DeiT-Tiny
-`PYTHONPATH=src python -m retinai train-final --config configs/base.yaml --model-name deit_tiny --lr 7.054516705607733e-05 --weight-decay 4.1372877625975084e-05 --batch-size 128`
+`PYTHONPATH=src python -m retinai train-final --config configs/base.yaml --model-name deit_tiny --lr <best_lr> --weight-decay <best_wd> --batch-size <best_bs> --epochs 100 --out-dir artifacts/final/deit_tiny`
 
 ### 12) Train final — ResNet18
-`PYTHONPATH=src python -m retinai train-final --config configs/base.yaml --model-name resnet18 --lr 0.00013751516691064744 --weight-decay 2.3436685827211785e-06 --batch-size 32`
+`PYTHONPATH=src python -m retinai train-final --config configs/base.yaml --model-name resnet18 --lr <best_lr> --weight-decay <best_wd> --batch-size <best_bs> --epochs 100 --out-dir artifacts/final/resnet18`
 
 ---
 
@@ -73,12 +110,13 @@
 ### 15) Evaluate — ResNet18
 `PYTHONPATH=src python -m retinai evaluate --config configs/base.yaml --checkpoint artifacts/final/resnet18/best.pt --model-name resnet18`
 
-### 16) Re-run compare-models after evaluation (generates ROC Type 2 + AUC table)
+### 16) Re-run compare-models after evaluation
 `PYTHONPATH=src python -m retinai compare-models --config configs/base.yaml`
 
 ---
 
 ## Phase 6 — Localization (Grad-CAM)
+
 ### 17) Grad-CAM maps — replace model-name and image paths as needed
 `PYTHONPATH=src python -m retinai localize --config configs/base.yaml --checkpoint artifacts/final/efficientnet_b0/best.pt --model-name efficientnet_b0 --images path/to/img1.png,path/to/img2.png --output-dir artifacts/gradcam/efficientnet_b0`
 > Output: `artifacts/gradcam/{model}/` — heatmap PNG per image

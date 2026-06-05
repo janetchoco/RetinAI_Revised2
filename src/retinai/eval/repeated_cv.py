@@ -12,6 +12,7 @@ from retinai.train.engine import run_training
 
 
 def run_repeated_cv(cfg: AppConfig, manifest: pd.DataFrame, model_name: str, params: dict) -> dict:
+    manifest = manifest[manifest["split"] == "train"].reset_index(drop=True)
     out_dir = Path(cfg.runtime.artifact_root) / "repeated_cv" / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
     scores_path = out_dir / "scores.csv"

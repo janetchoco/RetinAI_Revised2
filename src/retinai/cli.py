@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from retinai.config import ensure_artifact_dirs, load_config
@@ -16,19 +17,41 @@ from retinai.eval.test_evaluator import evaluate_on_test
 from retinai.hpo.optuna_runner import run_hpo
 from retinai.localization.gradcam_runner import generate_gradcam_maps
 from retinai.models.factory import create_model
+from retinai.preprocess.cropper import run_preprocess
 from retinai.train.engine import run_training
+
+
+def cmd_preprocess(args):
+    cfg = load_config(args.config)
+    src_dirs = [
+        (Path(cfg.data.train_dir), "train"),
+        (Path(cfg.data.test_dir), "test"),
+    ]
+    run_preprocess(
+        src_dirs=src_dirs,
+        out_dir=Path(cfg.data.preprocessed_dir),
+        class_names=cfg.data.class_names,
+        threshold=cfg.data.crop_threshold,
+    )
 
 
 def cmd_build_manifest(args):
     cfg = load_config(args.config)
     ensure_artifact_dirs(cfg)
-    df = build_manifest(cfg.data.train_dir, cfg.data.class_names)
+    df = build_manifest(
+        preprocessed_dir=cfg.data.preprocessed_dir,
+        class_names=cfg.data.class_names,
+        test_split_ratio=cfg.data.test_split_ratio,
+        split_seed=cfg.data.split_seed,
+    )
     valid_df, bad_df = validate_manifest_images(df)
     Path(cfg.data.manifest_path).parent.mkdir(parents=True, exist_ok=True)
     valid_df.to_csv(cfg.data.manifest_path, index=False)
     bad_path = str(Path(cfg.data.manifest_path).with_name("quarantine_bad_images.csv"))
     bad_df.to_csv(bad_path, index=False)
-    print(f"manifest={cfg.data.manifest_path} valid={len(valid_df)} bad={len(bad_df)}")
+    train_n = (valid_df["split"] == "train").sum()
+    test_n = (valid_df["split"] == "test").sum()
+    print(f"manifest={cfg.data.manifest_path} train={train_n} test={test_n} bad={len(bad_df)}")
 
 
 def cmd_hpo(args):
@@ -62,6 +85,7 @@ def cmd_train_final(args):
     cfg = load_config(args.config)
     ensure_artifact_dirs(cfg)
     train_manifest = pd.read_csv(cfg.data.manifest_path)
+    train_manifest = train_manifest[train_manifest["split"] == "train"].copy()
     out_dir = args.out_dir if args.out_dir else f"{cfg.runtime.artifact_root}/final/{args.model_name}"
 
     if args.val_split and args.val_split > 0:
@@ -105,12 +129,28 @@ def cmd_train_final(args):
     print(f"training_seconds={result['training_seconds']:.1f}")
     print(f"training_minutes={result['training_seconds']/60:.1f}")
 
+    history_path = Path(out_dir) / "history.csv"
+    if history_path.exists():
+        hist = pd.read_csv(history_path)
+        epochs_axis = hist["epoch"] if "epoch" in hist.columns else range(1, len(hist) + 1)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(epochs_axis, hist["train_loss"], label="train_loss")
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel("Loss")
+        ax.set_title(f"Training Loss — {args.model_name}")
+        ax.legend()
+        fig.tight_layout()
+        loss_curve_path = Path(out_dir) / "loss_curve.png"
+        fig.savefig(loss_curve_path, dpi=150)
+        plt.close(fig)
+        print(f"loss_curve={loss_curve_path}")
+
 
 def cmd_evaluate(args):
     cfg = load_config(args.config)
-    test_df, bad_df = validate_manifest_images(
-        build_manifest(cfg.data.test_dir, cfg.data.class_names)
-    )
+    manifest = pd.read_csv(cfg.data.manifest_path)
+    test_df_raw = manifest[manifest["split"] == "test"].copy()
+    test_df, bad_df = validate_manifest_images(test_df_raw)
     if bad_df is not None and len(bad_df):
         print(f"Skipping {len(bad_df)} corrupt test images.")
     out_dir = args.out_dir if args.out_dir else f"{cfg.runtime.artifact_root}/eval/{args.model_name}"
@@ -129,9 +169,9 @@ def cmd_evaluate(args):
 
 def cmd_prior_correct(args):
     cfg = load_config(args.config)
-    test_df, bad_df = validate_manifest_images(
-        build_manifest(cfg.data.test_dir, cfg.data.class_names)
-    )
+    manifest = pd.read_csv(cfg.data.manifest_path)
+    test_df_raw = manifest[manifest["split"] == "test"].copy()
+    test_df, bad_df = validate_manifest_images(test_df_raw)
     if bad_df is not None and len(bad_df):
         print(f"Skipping {len(bad_df)} corrupt test images.")
     out_dir = args.out_dir if args.out_dir else f"{cfg.runtime.artifact_root}/prior_correction/{args.model_name}"
@@ -171,6 +211,10 @@ def cmd_localize(args):
 def build_parser():
     parser = argparse.ArgumentParser(prog="retinai")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p_preprocess = sub.add_parser("preprocess")
+    p_preprocess.add_argument("--config", required=True)
+    p_preprocess.set_defaults(func=cmd_preprocess)
 
     p_manifest = sub.add_parser("build-manifest")
     p_manifest.add_argument("--config", required=True)

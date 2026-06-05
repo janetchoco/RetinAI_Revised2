@@ -24,6 +24,10 @@ class DataConfig:
     image_size: int = 224
     class_names: list[str] = field(default_factory=lambda: ["normal", "amd", "dr"])
     patient_id_regex: str | None = None
+    preprocessed_dir: str = "data/preprocessed"
+    crop_threshold: int = 10
+    test_split_ratio: float = 0.20
+    split_seed: int = 42
 
 
 @dataclass

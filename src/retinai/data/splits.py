@@ -10,6 +10,7 @@ def assign_stratified_folds(
     n_splits: int,
     seed: int,
 ) -> pd.DataFrame:
+    df = df[df["split"] == "train"].copy()
     out = df.copy()
     out["fold"] = -1
     splitter = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)

@@ -13,6 +13,10 @@ data:
     - normal
     - amd
     - dr
+  preprocessed_dir: data/preprocessed
+  crop_threshold: 10
+  test_split_ratio: 0.20
+  split_seed: 42
 train:
   model_name: efficientnet_b0
   pretrained: true
