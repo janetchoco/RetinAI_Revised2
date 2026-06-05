@@ -23,6 +23,7 @@ if not os.path.exists('RetinAI_Revised2'):
 # Symlink outputs to Drive (create folders if first time)
 !mkdir -p /content/drive/MyDrive/RetinAI_Revised2_Output/preprocessed
 !mkdir -p /content/drive/MyDrive/RetinAI_Revised2_Output/artifacts
+!mkdir -p data
 !ln -sf /content/drive/MyDrive/RetinAI_Revised2_Output/preprocessed data/preprocessed
 !ln -sf /content/drive/MyDrive/RetinAI_Revised2_Output/artifacts artifacts
 ```
