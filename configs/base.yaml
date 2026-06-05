@@ -1,7 +1,7 @@
 runtime:
   seed: 42
   device: cuda
-  num_workers: 2
+  num_workers: 4
   artifact_root: artifacts
   study_db: artifacts/optuna.db
 data:
