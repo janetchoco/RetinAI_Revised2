@@ -1,0 +1,53 @@
+:root {
+  --bg-void: #f8fafc;
+  --bg-primary: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+
+  --border-subtle: #e2e8f0;
+  --border-medium: #cbd5e1;
+
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-glow: rgba(37, 99, 235, 0.1);
+  --accent-glow-strong: rgba(37, 99, 235, 0.2);
+
+  --normal: #10b981;
+  --normal-bg: rgba(16, 185, 129, 0.08);
+  --normal-border: rgba(16, 185, 129, 0.22);
+
+  --dr: #f97316;
+  --dr-bg: rgba(249, 115, 22, 0.08);
+  --dr-border: rgba(249, 115, 22, 0.22);
+
+  --amd: #ef4444;
+  --amd-bg: rgba(239, 68, 68, 0.08);
+  --amd-border: rgba(239, 68, 68, 0.22);
+
+  --font-display: 'Figtree', sans-serif;
+  --font-body: 'Noto Sans', sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 100px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-void);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}

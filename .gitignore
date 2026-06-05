@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Data and model artifacts (too large for GitHub — store in Google Drive)
+/train/
+/test/
+/data/
+/artifacts/
+
+# Optuna database
+*.db
+
+# Office documents
+*.docx
+*.doc
+*.xlsx
+*.pptx
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Environment
+.env
+venv/
+.venv/
+
+# Scratch
+hf_space_tmp/

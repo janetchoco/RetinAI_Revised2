@@ -1,0 +1,3 @@
+train:
+  model_name: efficientnet_b0
+

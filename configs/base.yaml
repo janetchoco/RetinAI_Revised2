@@ -1,0 +1,35 @@
+runtime:
+  seed: 42
+  device: cuda
+  num_workers: 2
+  artifact_root: artifacts
+  study_db: artifacts/optuna.db
+data:
+  train_dir: train
+  test_dir: test
+  manifest_path: artifacts/manifest.csv
+  image_size: 224
+  class_names:
+    - normal
+    - amd
+    - dr
+train:
+  model_name: efficientnet_b0
+  pretrained: true
+  pretrained_source: imagenet1k
+  epochs: 100
+  batch_size: 16
+  lr: 0.0003
+  weight_decay: 0.0001
+  patience: 10
+  mixed_precision: true
+  metric_for_best: macro_f1
+cv:
+  n_splits: 5
+  n_repeats: 10
+  shuffle: true
+hpo:
+  n_trials: 50
+  metric_to_optimize: macro_f1
+  epochs: 30
+
