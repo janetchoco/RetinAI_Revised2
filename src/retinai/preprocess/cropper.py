@@ -25,10 +25,12 @@ def run_preprocess(
     out_dir: Path,
     class_names: list[str],
     threshold: int = 10,
+    image_size: int | None = None,
 ) -> None:
     """
     Crop black backgrounds from all images in src_dirs and save to out_dir/{class}/.
     Output filenames are prefixed with the source directory name to avoid collisions.
+    If image_size is set, images are resized to (image_size, image_size) after cropping.
     Idempotent: existing output files are skipped.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -51,6 +53,8 @@ def run_preprocess(
                 continue
             with Image.open(img_path) as img:
                 cropped = _crop_black(img.convert("RGB"), threshold)
+                if image_size is not None:
+                    cropped = cropped.resize((image_size, image_size), Image.LANCZOS)
                 cropped.save(out_path)
             saved += 1
 

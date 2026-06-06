@@ -32,6 +32,7 @@ def cmd_preprocess(args):
         out_dir=Path(cfg.data.preprocessed_dir),
         class_names=cfg.data.class_names,
         threshold=cfg.data.crop_threshold,
+        image_size=cfg.data.image_size,
     )
 
 
