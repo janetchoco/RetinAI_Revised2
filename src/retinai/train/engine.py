@@ -94,6 +94,8 @@ def run_training(
     epochs_no_improve = 0
     best_path = out_path / "best.pt"
     history_csv = out_path / "history.csv"
+    if history_csv.exists():
+        history_csv.unlink()
     start = time.time()
     for epoch in range(epochs):
         train_loss = train_one_epoch(model, train_loader, optimizer, device, scaler=scaler)
