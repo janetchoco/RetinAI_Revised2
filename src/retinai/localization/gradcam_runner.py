@@ -119,8 +119,8 @@ def generate_gradcam_maps(
             true_label = Path(img_path).parent.name
             pred_label = class_names[pred_class]
             conf = float(probs[pred_class])
-            # Resize back to original dimensions so landscape images are not squished
-            Image.fromarray(visualization).resize(orig_size, Image.LANCZOS).save(
+            # Save at fixed square size — avoids distortion from non-square orig_size
+            Image.fromarray(visualization).resize((512, 512), Image.LANCZOS).save(
                 out / f"{stem}_true{true_label}_pred{pred_label}_conf{conf:.2f}.png"
             )
 
