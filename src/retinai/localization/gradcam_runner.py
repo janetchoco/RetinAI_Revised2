@@ -31,15 +31,46 @@ def _reshape_transform_deit(tensor, height: int = 14, width: int = 14):
     return result.transpose(2, 3).transpose(1, 2)
 
 
+def _find_original_path(preprocessed_path: str) -> str | None:
+    """Locate the original source image in train/ or test/ for display purposes."""
+    p = Path(preprocessed_path)
+    class_name = p.parent.name
+    filename = p.name
+    if filename.startswith("train_"):
+        orig = Path("train") / class_name / filename[6:]
+    elif filename.startswith("test_"):
+        orig = Path("test") / class_name / filename[5:]
+    else:
+        return None
+    return str(orig) if orig.exists() else None
+
+
+def _letterbox(img: Image.Image, size: int) -> np.ndarray:
+    """Resize preserving aspect ratio, pad with black to size×size."""
+    w, h = img.size
+    scale = size / max(w, h)
+    nw, nh = int(w * scale), int(h * scale)
+    resized = img.resize((nw, nh), Image.LANCZOS)
+    canvas = Image.new("RGB", (size, size), (0, 0, 0))
+    canvas.paste(resized, ((size - nw) // 2, (size - nh) // 2))
+    return (np.array(canvas) / 255.0).astype(np.float32)
+
+
 def _load_image(image_path: str, image_size: int = 224):
+    # Tensor: preprocessed 224×224 image — consistent with training
     tfm = transforms.Compose([
         transforms.Resize((image_size, image_size)),
         transforms.ToTensor(),
     ])
     with Image.open(image_path).convert("RGB") as img:
-        orig_size = img.size  # (width, height) — preserved for saving
         tensor = tfm(img).unsqueeze(0)
-        rgb_img = (np.array(img.resize((image_size, image_size))) / 255.0).astype(np.float32)
+
+    # Visualization: use original image (correct aspect ratio) if available
+    vis_path = _find_original_path(image_path) or image_path
+    with Image.open(vis_path).convert("RGB") as vis_img:
+        orig_size = vis_img.size
+        rgb_img = _letterbox(vis_img, image_size)
+
     return tensor, rgb_img, orig_size
 
 
