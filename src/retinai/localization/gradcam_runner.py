@@ -85,14 +85,18 @@ def generate_gradcam_maps(
             visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True)
 
             stem = Path(img_path).stem
+            true_label = Path(img_path).parent.name
             pred_label = class_names[pred_class]
             conf = float(probs[pred_class])
             # Resize back to original dimensions so landscape images are not squished
             Image.fromarray(visualization).resize(orig_size, Image.LANCZOS).save(
-                out / f"{stem}_pred{pred_label}_conf{conf:.2f}.png"
+                out / f"{stem}_true{true_label}_pred{pred_label}_conf{conf:.2f}.png"
             )
 
             with open(out / f"{stem}_scores.txt", "w", encoding="utf-8") as f:
+                f.write(f"true_class: {true_label}\n")
+                f.write(f"predicted:  {pred_label} ({conf:.4f})\n")
+                f.write(f"correct:    {true_label == pred_label}\n\n")
                 for cls, prob in zip(class_names, probs):
                     f.write(f"{cls}: {prob:.4f}\n")
 
